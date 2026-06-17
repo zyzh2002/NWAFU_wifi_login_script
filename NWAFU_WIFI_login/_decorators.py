@@ -4,13 +4,14 @@ def checkvars(varlist, errorinfo):
 	"""
 	Decorator, check if some vars are defined before running a function
 	"""
-	if type(varlist) is str:
+	if isinstance(varlist, str):
 		varlist = [varlist]
 	def decorator(func):
 		@wraps(func)
 		def wrapper(self,*args,**kwargs):
 			exist_status = [self._is_defined(var) for var in varlist]
-			assert not (False in exist_status), errorinfo
+			if not all(exist_status):
+				raise RuntimeError(errorinfo)
 			return func(self, *args, **kwargs)
 		return wrapper
 	return decorator
@@ -22,9 +23,9 @@ def infomanage(callinfo=None, successinfo=None, errorinfo=None):
 	"""
 	def decorator(func):
 		nonlocal callinfo, successinfo, errorinfo
-		if callinfo == None: callinfo = "Calling function " + func.__name__
-		if successinfo == None: successinfo = "Successfully call function " + func.__name__
-		if errorinfo == None: errorinfo = "Failed to call function " + func.__name__
+		if callinfo is None: callinfo = "Calling function " + func.__name__
+		if successinfo is None: successinfo = "Successfully call function " + func.__name__
+		if errorinfo is None: errorinfo = "Failed to call function " + func.__name__
 		@wraps(func)
 		def wrapper(self, *args, **kwargs):
 			print(callinfo)

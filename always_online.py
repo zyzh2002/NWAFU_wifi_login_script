@@ -4,30 +4,30 @@ from NWAFU_WIFI_login.LoginManager import LoginManager
 
 
 def is_connect_internet(testip):
-    status = os.system(u"ping {} -w 8".format(testip))
+    status = os.system("ping {} -w 8".format(testip))
     return status == 0
 
 
 def always_login(username, password, checkinterval):
     testip = "210.27.84.131"  # 只能由内网访问
     lm = LoginManager()
-    login = lambda: lm.login(username=username, password=password)
+
     timestamp = lambda: print(time.asctime(time.localtime(time.time())))
 
     timestamp()
     try:
-        login()
-    except Exception:
-        pass
-    while 1:
+        lm.login(username=username, password=password)
+    except Exception as exc:
+        print("Login failed: {}".format(exc))
+    while True:
         time.sleep(checkinterval)
         if not is_connect_internet(testip):
             print("失败")
             timestamp()
             try:
-                login()
-            except Exception:
-                pass
+                lm.login(username=username, password=password)
+            except Exception as exc:
+                print("Login failed: {}".format(exc))
 
 
 if __name__ == "__main__":

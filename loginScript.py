@@ -7,7 +7,7 @@ from NWAFU_WIFI_login.LoginManager import LoginManager
 def isConnected(testIp):
     print("Checking connection to {}".format(testIp))
     print("----------------")
-    status = os.system(u"ping {} -w 10".format(testIp))
+    status = os.system("ping {} -w 10".format(testIp))
     print("----------------")
     return status == 0
 
@@ -18,15 +18,16 @@ def loginToInternet(username, password):
     print("At {}:".format(currentTime))
     try:
         loginObj.login(username=username, password=password)
-    except Exception:
-        pass
-    if isConnected("210.27.84.131"):
-        return True
-    else:
-        return False
+    except Exception as exc:
+        print("Login failed: {}".format(exc))
+    return isConnected("210.27.84.131")
 
 
 def main(username=None, password=None):
+    if len(sys.argv) < 3:
+        print("Usage: python loginScript.py <username> <password>")
+        return 1
+
     username = sys.argv[1]
     password = sys.argv[2]
 

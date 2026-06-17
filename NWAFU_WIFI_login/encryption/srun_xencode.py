@@ -24,7 +24,7 @@ def lencode(msg, key):
     if key:
         m = msg[l - 1]
         if m < ll - 3 or m > ll:
-            return
+            raise ValueError("Invalid encoded data length: {}".format(m))
         ll = m
     for i in range(0, l):
         msg[i] = chr(msg[i] & 0xff) + chr(msg[i] >> 8 & 0xff) + chr(

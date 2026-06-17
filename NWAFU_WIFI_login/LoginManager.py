@@ -1,20 +1,30 @@
-import requests
-import time
+import json
 import re
+import requests
 
-__package__ = 'NWAFU_WIFI_login'
-from ._decorators import *
+from ._decorators import (
+	checkvars,
+	checkip,
+	checktoken,
+	checkinfo,
+	checkencryptedinfo,
+	checkmd5,
+	checkencryptedmd5,
+	checkchkstr,
+	checkencryptedchkstr,
+	infomanage,
+)
 
-from .encryption.srun_md5 import *
-from .encryption.srun_sha1 import *
-from .encryption.srun_base64 import *
-from .encryption.srun_xencode import *
+from .encryption.srun_md5 import get_md5
+from .encryption.srun_sha1 import get_sha1
+from .encryption.srun_base64 import get_base64
+from .encryption.srun_xencode import get_xencode
 
-header={
-	'User-Agent':'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.26 Safari/537.36'
+HEADERS = {
+	'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.26 Safari/537.36'
 }
 
-		
+
 class LoginManager:
 	def __init__(self,
 		url_login_page = "https://portal.nwafu.edu.cn/srun_portal_success?ac_id=1&theme=pro",
@@ -29,7 +39,7 @@ class LoginManager:
 		self.url_login_page = url_login_page
 		self.url_get_challenge_api = url_get_challenge_api
 		self.url_login_api = url_login_api
-		
+
 		# other static parameters
 		self.n = n
 		self.vtype = vtype
@@ -42,7 +52,7 @@ class LoginManager:
 
 		self.get_ip()
 		self.get_token()
-		self.get_login_responce()
+		self.get_login_response()
 
 	def get_ip(self):
 		print("Step1: Get local ip returned from srun server.")
@@ -56,20 +66,19 @@ class LoginManager:
 		self._resolve_token_from_challenge_response()
 		print("----------------")
 
-	def get_login_responce(self):
-		print("Step3: Loggin and resolve response.")
+	def get_login_response(self):
+		print("Step3: Login and resolve response.")
 		self._generate_encrypted_login_info()
 		self._send_login_info()
-		self._resolve_login_responce()
-		print("The loggin result is: " + self._login_result)
+		self._resolve_login_response()
+		print("The login result is: " + self._login_result)
 		print("----------------")
 
 	def _is_defined(self, varname):
 		"""
 		Check whether variable is defined in the object
 		"""
-		allvars = vars(self)
-		return varname in allvars
+		return hasattr(self, varname)
 
 	@infomanage(
 		callinfo = "Getting login page",
@@ -78,7 +87,7 @@ class LoginManager:
 	)
 	def _get_login_page(self):
 		# Step1: Get login page
-		self._page_response = requests.get(self.url_login_page, headers=header)
+		self._page_response = requests.get(self.url_login_page, headers=HEADERS)
 
 	@checkvars(
 		varlist = "_page_response",
@@ -91,7 +100,10 @@ class LoginManager:
 	)
 	def _resolve_ip_from_login_page(self):
 		# print(self._page_response.text)
-		self.ip = re.search('ip     : "(.*?)"', self._page_response.text).group(1)
+		match = re.search('ip     : "(.*?)"', self._page_response.text)
+		if not match:
+			raise ValueError("Failed to parse IP address from login page")
+		self.ip = match.group(1)
 
 	@checkip
 	@infomanage(
@@ -110,7 +122,7 @@ class LoginManager:
 			"ip": self.ip
 		}
 
-		self._challenge_response = requests.get(self.url_get_challenge_api, params=params_get_challenge, headers=header)
+		self._challenge_response = requests.get(self.url_get_challenge_api, params=params_get_challenge, headers=HEADERS)
 
 	@checkvars(
 		varlist = "_challenge_response",
@@ -122,8 +134,11 @@ class LoginManager:
 		errorinfo = "Failed to resolve token"
 	)
 	def _resolve_token_from_challenge_response(self):
-		self.token = re.search('"challenge":"(.*?)"', self._challenge_response.text).group(1)
-	
+		match = re.search('"challenge":"(.*?)"', self._challenge_response.text)
+		if not match:
+			raise ValueError("Failed to parse token from challenge response")
+		self.token = match.group(1)
+
 	@checkip
 	def _generate_info(self):
 		info_params = {
@@ -133,8 +148,7 @@ class LoginManager:
 			"acid": self.ac_id,
 			"enc_ver": self.enc
 		}
-		info = re.sub("'",'"',str(info_params))
-		self.info = re.sub(" ",'',info)
+		self.info = json.dumps(info_params, separators=(",", ":"))
 
 	@checkinfo
 	@checktoken
@@ -144,7 +158,7 @@ class LoginManager:
 	@checktoken
 	def _generate_md5(self):
 		self.md5 = get_md5("", self.token)
-	
+
 	@checkmd5
 	def _encrypt_md5(self):
 		self.encrypted_md5 = "{MD5}" + self.md5
@@ -196,16 +210,19 @@ class LoginManager:
 			'n': self.n,
 			'type': self.vtype
 		}
-		self._login_responce = requests.get(self.url_login_api, params=login_info_params, headers=header)
-	
+		self._login_response = requests.get(self.url_login_api, params=login_info_params, headers=HEADERS)
+
 	@checkvars(
-		varlist = "_login_responce",
-		errorinfo = "Need _login_responce. Run _send_login_info in advance"
+		varlist = "_login_response",
+		errorinfo = "Need _login_response. Run _send_login_info in advance"
 	)
 	@infomanage(
 		callinfo = "Resolving login result",
 		successinfo = "Login result successfully resolved",
 		errorinfo = "Cannot resolve login result. Maybe the srun response format is changed"
 	)
-	def _resolve_login_responce(self):
-		self._login_result = re.search('"res":"(.*?)"', self._login_responce.text).group(1)
+	def _resolve_login_response(self):
+		match = re.search('"res":"(.*?)"', self._login_response.text)
+		if not match:
+			raise ValueError("Failed to parse login result from response")
+		self._login_result = match.group(1)

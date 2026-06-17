@@ -3,8 +3,7 @@ _ALPHA = "LVoJPiCN2R8G90yg+hmFHuacZ1OWMnrsSTXkYpUq/3dlbfKwv6xztjI7DeBE45QA"
 def _getbyte(s, i):
     x = ord(s[i])
     if (x > 255):
-        print("INVALID_CHARACTER_ERR: DOM Exception 5")
-        exit(0)
+        raise ValueError("Character code out of byte range: {}".format(x))
     return x
 def get_base64(s):
     i=0
